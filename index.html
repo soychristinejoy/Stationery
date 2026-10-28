@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Unit 3: Stationery Game</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/canvas-confetti.browser.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Quicksand:wght@600;700;800&family=Merriweather:wght@700;900&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Quicksand', sans-serif;
+      background: linear-gradient(135deg, #e0f2fe 0%, #fef3c7 100%);
+      user-select: none;
+      -webkit-user-select: none;
+      min-height: 100vh;
+      overflow-y: auto;
+    }
+    .font-heading {
+      font-family: 'Fredoka One', cursive;
+    }
+    /* Serif font style for capital I with top & bottom lines */
+    .font-serif-capital {
+      font-family: 'Merriweather', serif;
+    }
+    .game-card {
+      background: rgba(255, 255, 255, 0.99);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 20px 40px -5px rgba(0, 0, 0, 0.2);
+    }
+    .btn-bounce {
+      transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.15s ease;
+    }
+    .btn-bounce:hover {
+      transform: translateY(-3px) scale(1.02);
+    }
+    .btn-bounce:active {
+      transform: translateY(2px) scale(0.98);
+    }
+    .tile-drop-zone {
+      min-height: 5.5rem;
+      border: 4px dashed #6366f1;
+      border-radius: 1.5rem;
+      background-color: #f1f5f9;
+    }
+    @keyframes pulse-subtle {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+    .animate-pulse-subtle {
+      animation: pulse-subtle 2s infinite ease-in-out;
+    }
+    @keyframes glowZoom {
+      0% { transform: scale(0.3); opacity: 0; filter: drop-shadow(0 0 0px gold); }
+      50% { transform: scale(1.2); opacity: 1; filter: drop-shadow(0 0 35px gold); }
+      100% { transform: scale(1); opacity: 1; filter: drop-shadow(0 0 15px gold); }
+    }
+    .animate-glow-zoom {
+      animation: glowZoom 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+    @keyframes greenFlash {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.3; transform: scale(1.05); }
+    }
+    .animate-green-flash {
+      animation: greenFlash 0.7s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="min-h-screen w-screen flex items-center justify-center p-3 sm:p-6 text-slate-800">
+
+  <!-- Main Game Container - Scrollable support -->
+  <div id="app" class="w-full max-w-5xl min-h-[720px] game-card rounded-3xl p-4 sm:p-8 flex flex-col justify-between border-4 border-white relative shadow-2xl">
+    
+    <!-- Top Bar: Navigation & Star Collection Line Above -->
+    <header class="flex justify-between items-center mb-3 z-10 shrink-0">
+      <button id="btn-home" onclick="game.goHome()" class="hidden btn-bounce bg-amber-400 hover:bg-amber-500 text-slate-900 font-heading text-xl px-5 py-2.5 rounded-2xl flex items-center gap-2 shadow-md">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 00-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 00-1 1m-6 0h6"></path></svg>
+        <span>Menu</span>
+      </button>
+
+      <!-- Star Lines Above (Rewards Tracker) -->
+      <div id="star-tracker" class="hidden flex items-center gap-2 bg-amber-50 border-3 border-amber-300 rounded-2xl px-5 py-2 shadow-inner ml-auto">
+        <span class="font-heading text-xl text-amber-700 mr-1">Stars:</span>
+        <div id="star-container" class="flex gap-2.5 text-3xl">
+          <!-- Populated dynamically based on total questions -->
+        </div>
+      </div>
+    </header>
+
+    <!-- SLIDE 1: Title Screen -->
+    <div id="slide-1" class="flex-1 flex flex-col items-center justify-center text-center py-4">
+      <div class="mb-4">
+        <h1 class="font-heading text-5xl sm:text-7xl text-indigo-600 tracking-wide drop-shadow-md mb-3">Unit 3: Stationery</h1>
+      </div>
+
+      <!-- Target Stationery Only Graphics Display (All 6 items aligned) -->
+      <div class="flex justify-center items-center gap-3 sm:gap-5 my-6 flex-wrap max-w-4xl">
+        <div class="p-4 bg-rose-100 rounded-3xl border-3 border-rose-300 text-5xl sm:text-6xl shadow-md">✏️</div>
+        <div class="p-4 bg-amber-100 rounded-3xl border-3 border-amber-300 text-5xl sm:text-6xl shadow-md">🖊️</div>
+        <div class="p-4 bg-emerald-100 rounded-3xl border-3 border-emerald-300 text-5xl sm:text-6xl shadow-md">🖍️</div>
+        <div class="p-4 bg-sky-100 rounded-3xl border-3 border-sky-300 text-5xl sm:text-6xl shadow-md">📏</div>
+        <div class="p-4 bg-purple-100 rounded-3xl border-3 border-purple-300 text-5xl sm:text-6xl shadow-md">📖</div>
+        <div class="p-4 bg-pink-100 rounded-3xl border-3 border-pink-300 text-5xl sm:text-6xl shadow-md">🧹</div>
+      </div>
+
+      <button onclick="game.startTitleGame()" class="btn-bounce animate-pulse-subtle bg-emerald-500 hover:bg-emerald-600 text-white font-heading text-3xl sm:text-5xl px-14 py-5 rounded-3xl shadow-xl border-b-8 border-emerald-700 flex items-center gap-4 mt-2">
+        <span>START</span>
+        <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+      </button>
+
+      <!-- Teacher Names Below Start Button -->
+      <div class="mt-6 flex flex-col items-center">
+        <p class="font-heading text-xl sm:text-2xl text-slate-700 tracking-wide">Teacher Christine and Teacher Sophia</p>
+        <p class="font-bold text-base sm:text-lg text-indigo-600 mt-0.5">English Teachers</p>
+      </div>
+    </div>
+
+    <!-- SLIDE 2: Activity Selection -->
+    <div id="slide-2" class="hidden flex-1 flex flex-col justify-center items-center py-4">
+      <h2 class="font-heading text-4xl sm:text-6xl text-indigo-700 mb-2 text-center">Choose an Activity!</h2>
+      <p class="text-slate-600 mb-6 font-bold text-center text-xl sm:text-2xl">Select a game to practice your stationery words!</p>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-4xl">
+        <!-- Button 1 -->
+        <button onclick="game.startActivity(1)" class="btn-bounce bg-gradient-to-b from-rose-400 to-rose-500 hover:from-rose-500 hover:to-rose-600 text-white p-6 rounded-3xl shadow-xl flex flex-col items-center justify-between text-center border-b-6 border-rose-700 min-h-[200px]">
+          <div class="bg-white/20 p-3 rounded-2xl text-5xl">👉 ✏️</div>
+          <div>
+            <span class="block font-heading text-2xl sm:text-3xl mb-1">1. What's this? / What's that?</span>
+            <span class="text-sm sm:text-base opacity-95 font-semibold">Point near or far!</span>
+          </div>
+        </button>
+
+        <!-- Button 2 -->
+        <button onclick="game.startActivity(2)" class="btn-bounce bg-gradient-to-b from-emerald-400 to-emerald-500 hover:from-emerald-500 hover:to-emerald-600 text-white p-6 rounded-3xl shadow-xl flex flex-col items-center justify-between text-center border-b-6 border-emerald-700 min-h-[200px]">
+          <div class="bg-white/20 p-3 rounded-2xl text-5xl">🧩 📝</div>
+          <div>
+            <span class="block font-heading text-2xl sm:text-3xl mb-1">2. Sentence Builder</span>
+            <span class="text-sm sm:text-base opacity-95 font-semibold">Build sentences!</span>
+          </div>
+        </button>
+
+        <!-- Button 3 -->
+        <button onclick="game.startActivity(3)" class="btn-bounce bg-gradient-to-b from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white p-6 rounded-3xl shadow-xl flex flex-col items-center justify-between text-center border-b-6 border-purple-800 min-h-[200px]">
+          <div class="bg-white/20 p-3 rounded-2xl text-5xl">⭐ 🏆</div>
+          <div>
+            <span class="block font-heading text-2xl sm:text-3xl mb-1">3. Put Together</span>
+            <span class="text-sm sm:text-base opacity-95 font-semibold">Ask & choose answer!</span>
+          </div>
+        </button>
+      </div>
+    </div>
+
+    <!-- ACTIVITY STAGE -->
+    <div id="activity-screen" class="hidden flex-1 flex flex-col justify-between">
+      <div class="flex justify-between items-center mb-2 px-2 shrink-0">
+        <span id="activity-title" class="font-heading text-2xl sm:text-3xl text-indigo-700">Activity</span>
+        <span id="question-tracker" class="text-lg sm:text-xl font-heading text-slate-700 bg-amber-300 px-4 py-1.5 rounded-full shadow-sm">Round 1/6</span>
+      </div>
+
+      <!-- Game Stage Box -->
+      <div id="game-stage" class="flex-1 flex flex-col items-center justify-center bg-sky-50/90 rounded-3xl p-4 sm:p-6 border-3 border-sky-100 relative min-h-[460px]">
+        <!-- Dynamic Content Injected Here -->
+      </div>
+
+      <!-- Footer Control & Feedback Bar -->
+      <div class="mt-3 flex justify-between items-center h-16 px-2 shrink-0">
+        <div id="feedback-msg" class="font-heading text-2xl sm:text-3xl"></div>
+        <button id="btn-next" onclick="game.nextQuestion()" class="hidden btn-bounce bg-indigo-600 hover:bg-indigo-700 text-white font-heading text-2xl sm:text-3xl px-8 py-3 rounded-2xl shadow-lg border-b-6 border-indigo-900 flex items-center gap-3">
+          <span>Next</span>
+          <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // --- Web Audio Sound FX ---
+    class SoundManager {
+      constructor() { this.ctx = null; }
+      init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); }
+      playPop() {
+        this.init();
+        const osc = this.ctx.createOscillator(), gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(450, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(850, this.ctx.currentTime + 0.08);
+        gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.08);
+        osc.connect(gain); gain.connect(this.ctx.destination);
+        osc.start(); osc.stop(this.ctx.currentTime + 0.08);
+      }
+      playCorrect() {
+        this.init();
+        const now = this.ctx.currentTime;
+        [523.25, 659.25, 783.99].forEach((f, i) => {
+          const osc = this.ctx.createOscillator(), gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(f, now + i * 0.08);
+          gain.gain.setValueAtTime(0.25, now + i * 0.08);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.08 + 0.25);
+          osc.connect(gain); gain.connect(this.ctx.destination);
+          osc.start(now + i * 0.08); osc.stop(now + i * 0.08 + 0.25);
+        });
+      }
+      playWrong() {
+        this.init();
+        const now = this.ctx.currentTime, osc = this.ctx.createOscillator(), gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(220, now);
+        osc.frequency.linearRampToValueAtTime(130, now + 0.2);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+        osc.connect(gain); gain.connect(this.ctx.destination);
+        osc.start(); osc.stop(now + 0.2);
+      }
+      playFanfare() {
+        this.init();
+        const now = this.ctx.currentTime;
+        [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator(), gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, now + idx * 0.12);
+          gain.gain.setValueAtTime(0.25, now + idx * 0.12);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.12 + 0.35);
+          osc.connect(gain); gain.connect(this.ctx.destination);
+          osc.start(now + idx * 0.12); osc.stop(now + idx * 0.12 + 0.35);
+        });
+      }
+    }
+
+    const sound = new SoundManager();
+
+    // STRICT dataset focusing on ALL 6 target stationery items
+    const VOCAB = [
+      { id: 'pencil', phrase: 'a pencil', name: 'pencil', article: 'a', img: 'https://static.vecteezy.com/system/resources/previews/055/491/024/large_2x/pencil-isolated-on-white-background-free-photo.jpg' },
+      { id: 'pen', phrase: 'a pen', name: 'pen', article: 'a', img: 'https://static.vecteezy.com/system/resources/previews/047/432/733/original/pen-on-transparent-background-ai-generative-free-png.png' },
+      { id: 'marker', phrase: 'a marker', name: 'marker', article: 'a', img: 'https://myacademia.mu/wp-content/uploads/2022/10/OA019922-1.jpg' },
+      { id: 'ruler', phrase: 'a ruler', name: 'ruler', article: 'a', img: 'https://thumbs.dreamstime.com/b/transparent-plastic-ruler-white-background-clear-inch-cm-marks-isolated-375512861.jpg' },
+      { id: 'book', phrase: 'a book', name: 'book', article: 'a', img: 'https://media.quizizz.com/_mdserver/main/media/resource/gs/quizizz-media/quizzes/fbfa63b2-577f-4c41-8140-20d78b1334e3-v2' },
+      { id: 'eraser', phrase: 'an eraser', name: 'eraser', article: 'an', img: 'https://www.pngmart.com/files/15/Eraser-PNG-Transparent-HD-Photo.png' }
+    ];
+
+    class Game {
+      constructor() {
+        this.starsEarned = 0;
+        this.currentActivity = 0;
+        this.currentIndex = 0;
+        this.questions = [];
+        this.roundLocked = false;
+        this.isCompleted = false;
+      }
+
+      startTitleGame() {
+        sound.playPop();
+        this.goToSlide(2);
+      }
+
+      goToSlide(slideNumber) {
+        sound.playPop();
+        this.isCompleted = false;
+        document.getElementById('slide-1').classList.add('hidden');
+        document.getElementById('slide-2').classList.add('hidden');
+        document.getElementById('activity-screen').classList.add('hidden');
+        document.getElementById('btn-home').classList.add('hidden');
+        document.getElementById('star-tracker').classList.add('hidden');
+
+        if (slideNumber === 1) {
+          document.getElementById('slide-1').classList.remove('hidden');
+        } else if (slideNumber === 2) {
+          document.getElementById('slide-2').classList.remove('hidden');
+          document.getElementById('star-tracker').classList.remove('hidden');
+          this.renderStarTracker();
+        }
+      }
+
+      goHome() {
+        this.goToSlide(2);
+      }
+
+      renderStarTracker() {
+        const container = document.getElementById('star-container');
+        container.innerHTML = '';
+        for (let i = 0; i < this.questions.length || i < 6; i++) {
+          const span = document.createElement('span');
+          span.id = `star-slot-${i}`;
+          span.innerHTML = i < this.starsEarned ? '⭐' : '☆';
+          span.className = i < this.starsEarned ? 'scale-110 transition-transform' : 'opacity-40';
+          container.appendChild(span);
+        }
+      }
+
+      awardStar() {
+        this.starsEarned++;
+        this.renderStarTracker();
+        
+        const starSlot = document.getElementById(`star-slot-${this.starsEarned - 1}`);
+        if (starSlot) {
+          starSlot.innerHTML = '⭐';
+          starSlot.className = 'animate-glow-zoom text-amber-500';
+        }
+      }
+
+      startActivity(actNum) {
+        sound.playPop();
+        this.currentActivity = actNum;
+        this.currentIndex = 0;
+        this.starsEarned = 0;
+        this.isCompleted = false;
+        
+        document.getElementById('slide-2').classList.add('hidden');
+        document.getElementById('activity-screen').classList.remove('hidden');
+        document.getElementById('btn-home').classList.remove('hidden');
+        document.getElementById('star-tracker').classList.remove('hidden');
+
+        if (actNum === 1) {
+          document.getElementById('activity-title').innerText = "1. What's this? / What's that?";
+        } else if (actNum === 2) {
+          document.getElementById('activity-title').innerText = '2. Sentence Builder';
+        } else if (actNum === 3) {
+          document.getElementById('activity-title').innerText = '3. Put Together';
+        }
+
+        this.generateQuestions();
+        this.renderStarTracker();
+        this.renderQuestion();
+      }
+
+      generateQuestions() {
+        this.questions = VOCAB.slice().sort(() => Math.random() - 0.5).map(item => {
+          const isNear = Math.random() > 0.5;
+          return {
+            item: item,
+            isNear: isNear,
+            targetWord: isNear ? 'this' : 'that',
+            sentence: ['It\'s', item.article, `${item.name}.`]
+          };
+        });
+      }
+
+      renderQuestion() {
+        this.roundLocked = false;
+        this.isCompleted = false;
+        const stage = document.getElementById('game-stage');
+        const feedback = document.getElementById('feedback-msg');
+        const btnNext = document.getElementById('btn-next');
+        
+        feedback.innerText = '';
+        btnNext.classList.add('hidden');
+        stage.innerHTML = '';
+
+        document.getElementById('question-tracker').innerText = `Round ${this.currentIndex + 1}/${this.questions.length}`;
+        const q = this.questions[this.currentIndex];
+
+        if (this.currentActivity === 1) {
+          this.renderThisOrThat(stage, q);
+        } else if (this.currentActivity === 2) {
+          this.renderSentenceBuilder(stage, q);
+        } else if (this.currentActivity === 3) {
+          this.renderPutTogether(stage, q);
+        }
+      }
+
+      // Visual Distance Graphic (Large & Clear for classroom viewing)
+      getDistanceVisual(isNear, itemImgUrl) {
+        if (isNear) {
+          return `
+            <div id="target-visual-box" class="flex items-center justify-center gap-4 my-2 p-4 bg-white rounded-3xl shadow-lg border-2 border-slate-100">
+              <span class="text-6xl sm:text-8xl animate-bounce">👉</span>
+              <img src="${itemImgUrl}" alt="target item" class="w-40 h-40 sm:w-52 sm:h-52 object-contain">
+            </div>
+          `;
+        } else {
+          return `
+            <div id="target-visual-box" class="flex items-center justify-between my-2 p-4 bg-white rounded-3xl shadow-lg border-2 border-slate-100 w-full max-w-2xl px-12">
+              <span class="text-6xl sm:text-8xl">👉</span>
+              <img src="${itemImgUrl}" alt="target item" class="w-40 h-40 sm:w-52 sm:h-52 object-contain">
+            </div>
+          `;
+        }
+      }
+
+      // --- ACTIVITY 1: WHAT'S THIS? / WHAT'S THAT? ---
+      renderThisOrThat(stage, q) {
+        const visualHTML = this.getDistanceVisual(q.isNear, q.item.img);
+
+        stage.innerHTML = `
+          <div class="w-full flex flex-col items-center justify-center">
+            ${visualHTML}
+            <div class="font-heading text-4xl sm:text-6xl text-indigo-900 my-3">What's <span id="blank-space" class="underline decoration-indigo-400 decoration-4 px-4 text-indigo-600">_____</span>?</div>
+            <div class="flex gap-8 w-full max-w-lg mt-3">
+              <button id="btn-this" onclick="game.answerThisOrThat('this')" class="btn-bounce flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-heading text-4xl py-5 rounded-3xl shadow-xl border-b-8 border-indigo-900">this</button>
+              <button id="btn-that" onclick="game.answerThisOrThat('that')" class="btn-bounce flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-heading text-4xl py-5 rounded-3xl shadow-xl border-b-8 border-indigo-900">that</button>
+            </div>
+          </div>
+        `;
+      }
+
+      answerThisOrThat(choice) {
+        if (this.roundLocked) return;
+        const q = this.questions[this.currentIndex];
+        const feedback = document.getElementById('feedback-msg');
+        const btnNext = document.getElementById('btn-next');
+
+        const btnThis = document.getElementById('btn-this');
+        const btnThat = document.getElementById('btn-that');
+
+        if (choice === q.targetWord) {
+          this.roundLocked = true;
+          sound.playCorrect();
+          this.awardStar();
+          
+          const blankSpace = document.getElementById('blank-space');
+          if (blankSpace) {
+            blankSpace.innerText = choice;
+            blankSpace.classList.add('animate-glow-zoom', 'text-amber-600');
+          }
+
+          const visualBox = document.getElementById('target-visual-box');
+          if (visualBox) visualBox.classList.add('animate-glow-zoom');
+
+          if (choice === 'this') {
+            btnThis.className = "btn-bounce flex-1 bg-emerald-500 text-white font-heading text-4xl py-5 rounded-3xl shadow-xl border-b-8 border-emerald-700";
+            btnThat.className = "btn-bounce flex-1 bg-slate-200 text-slate-400 font-heading text-4xl py-5 rounded-3xl shadow-none opacity-50 cursor-not-allowed";
+          } else {
+            btnThat.className = "btn-bounce flex-1 bg-emerald-500 text-white font-heading text-4xl py-5 rounded-3xl shadow-xl border-b-8 border-emerald-700";
+            btnThis.className = "btn-bounce flex-1 bg-slate-200 text-slate-400 font-heading text-4xl py-5 rounded-3xl shadow-none opacity-50 cursor-not-allowed";
+          }
+
+          btnNext.classList.remove('hidden');
+        } else {
+          sound.playWrong();
+          feedback.innerHTML = `<span class="text-rose-500">Try again! Look at the distance 👉</span>`;
+        }
+      }
+
+      // --- ACTIVITY 2: SENTENCE BUILDER ---
+      renderSentenceBuilder(stage, q) {
+        let baseSentenceTiles = ['It\'s', q.item.article, `${q.item.name}`];
+        if (!baseSentenceTiles.includes('a')) baseSentenceTiles.push('a');
+        if (!baseSentenceTiles.includes('an')) baseSentenceTiles.push('an');
+
+        const scrambled = [...new Set(baseSentenceTiles)].sort(() => Math.random() - 0.5);
+
+        stage.innerHTML = `
+          <div class="w-full flex flex-col items-center justify-center">
+            <!-- Instruction Above Picture -->
+            <p class="font-heading text-2xl sm:text-3xl text-indigo-800 mb-2 text-center">Put the words in order.</p>
+
+            <!-- Large Target Picture Box for Back Row Visibility -->
+            <div id="target-visual-box" class="w-44 h-44 sm:w-52 sm:h-52 mb-3 bg-white p-4 rounded-3xl border-2 border-slate-100 shadow-lg flex items-center justify-center">
+              <img src="${q.item.img}" alt="target item" class="max-w-full max-h-full object-contain">
+            </div>
+            
+            <div id="p1-zone" class="tile-drop-zone w-full max-w-3xl p-4 mb-4 flex flex-wrap gap-4 items-center justify-center"></div>
+            
+            <div id="p1-pool" class="flex flex-wrap gap-4 justify-center max-w-3xl items-center">
+              ${scrambled.map((w, i) => {
+                const displayWord = w.startsWith("It") ? `<span class="font-serif-capital">I</span>t's` : w;
+                return `<button id="p1-tile-${i}" onclick="game.tileClick('${w.replace("'", "\\'")}', 'p1-tile-${i}')" class="btn-bounce bg-indigo-600 hover:bg-indigo-700 text-white font-heading text-3xl sm:text-5xl px-8 py-4 rounded-2xl shadow-xl border-b-6 border-indigo-900">${displayWord}</button>`;
+              }).join('')}
+              <!-- Standalone period button tile in blue (matching word tiles) -->
+              <button id="p1-tile-period" onclick="game.tileClick('.', 'p1-tile-period')" class="btn-bounce bg-indigo-600 hover:bg-indigo-700 text-white font-heading text-3xl sm:text-5xl px-7 py-4 rounded-2xl shadow-xl border-b-6 border-indigo-900">.</button>
+            </div>
+          </div>
+        `;
+      }
+
+      tileClick(word, tileId) {
+        if (this.roundLocked) return;
+        sound.playPop();
+
+        const tile = document.getElementById(tileId);
+        const zone = document.getElementById('p1-zone');
+        const pool = document.getElementById('p1-pool');
+
+        if (tile.parentElement === pool) {
+          zone.appendChild(tile);
+        } else {
+          pool.appendChild(tile);
+        }
+
+        const currentWords = Array.from(zone.children).map(b => b.innerText.trim());
+        const q = this.questions[this.currentIndex];
+        const expectedArray = ['It\'s', q.item.article, q.item.name, '.'];
+
+        if (currentWords.length === expectedArray.length) {
+          const isCorrect = currentWords.every((val, idx) => val === expectedArray[idx]);
+          if (isCorrect) {
+            this.roundLocked = true;
+            sound.playCorrect();
+            this.awardStar();
+
+            const visualBox = document.getElementById('target-visual-box');
+            if (visualBox) visualBox.classList.add('animate-glow-zoom');
+
+            document.getElementById('btn-next').classList.remove('hidden');
+          } else {
+            sound.playWrong();
+            document.getElementById('feedback-msg').innerHTML = `<span class="text-rose-500">Check word order, article, or ending period!</span>`;
+          }
+        }
+      }
+
+      // --- ACTIVITY 3: PUT TOGETHER ---
+      renderPutTogether(stage, q) {
+        const visualHTML = this.getDistanceVisual(q.isNear, q.item.img);
+
+        const correctAns = `It's ${q.item.article} ${q.item.name}.`;
+        const wrongAns1 = q.item.article === 'a' ? `It's an ${q.item.name}.` : `It's a ${q.item.name}.`;
+        const otherItem = VOCAB.find(v => v.id !== q.item.id);
+        const wrongAns2 = `It's ${otherItem.article} ${otherItem.name}.`;
+
+        const options = [correctAns, wrongAns1, wrongAns2].sort(() => Math.random() - 0.5);
+
+        stage.innerHTML = `
+          <div class="w-full flex flex-col items-center">
+            ${visualHTML}
+
+            <!-- Step 1: Question Selection -->
+            <div id="sd-step-1" class="my-2 text-center w-full">
+              <p class="text-2xl sm:text-3xl font-bold text-slate-700 mb-3">Step 1: Choose the question</p>
+              <div class="flex gap-6 justify-center">
+                <button id="btn-q-this" onclick="game.checkSDStep1('this')" class="btn-bounce bg-white border-4 border-purple-500 text-purple-700 hover:bg-purple-50 font-heading text-3xl sm:text-4xl px-8 py-3.5 rounded-2xl shadow-lg border-b-6 border-purple-700">What's <span class="font-serif-capital">t</span>his?</button>
+                <button id="btn-q-that" onclick="game.checkSDStep1('that')" class="btn-bounce bg-white border-4 border-purple-500 text-purple-700 hover:bg-purple-50 font-heading text-3xl sm:text-4xl px-8 py-3.5 rounded-2xl shadow-lg border-b-6 border-purple-700">What's that?</button>
+              </div>
+            </div>
+
+            <!-- Step 2: Answer Choice Selection (3 choices) -->
+            <div id="sd-step-2" class="hidden w-full max-w-2xl my-2 text-center">
+              <p class="text-2xl sm:text-3xl font-bold text-slate-700 mb-3">Step 2: Choose the correct answer!</p>
+              <div id="sd-answer-buttons" class="flex flex-col gap-3 w-full max-w-xl mx-auto">
+                ${options.map((opt, idx) => {
+                  const displayOpt = opt.replace("It's", `<span class="font-serif-capital">I</span>t's`);
+                  return `<button id="sd-ans-btn-${idx}" onclick="game.checkSDStep2('${opt.replace("'", "\\'")}', 'sd-ans-btn-${idx}')" class="btn-bounce bg-white border-4 border-purple-500 text-purple-700 hover:bg-purple-50 font-heading text-2xl sm:text-3xl py-3.5 px-6 rounded-2xl shadow-lg border-b-6 border-purple-700">${displayOpt}</button>`;
+                }).join('')}
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      checkSDStep1(choice) {
+        if (this.roundLocked) return;
+        const q = this.questions[this.currentIndex];
+        const feedback = document.getElementById('feedback-msg');
+
+        const btnQThis = document.getElementById('btn-q-this');
+        const btnQThat = document.getElementById('btn-q-that');
+
+        if (choice === q.targetWord) {
+          sound.playCorrect();
+
+          if (choice === 'this') {
+            btnQThis.className = "btn-bounce bg-emerald-500 text-white font-heading text-3xl sm:text-4xl px-8 py-3.5 rounded-2xl shadow-xl border-b-6 border-emerald-700";
+            btnQThat.className = "btn-bounce bg-slate-200 text-slate-400 font-heading text-3xl sm:text-4xl px-8 py-3.5 rounded-2xl shadow-none opacity-50 cursor-not-allowed";
+          } else {
+            btnQThat.className = "btn-bounce bg-emerald-500 text-white font-heading text-3xl sm:text-4xl px-8 py-3.5 rounded-2xl shadow-xl border-b-6 border-emerald-700";
+            btnQThis.className = "btn-bounce bg-slate-200 text-slate-400 font-heading text-3xl sm:text-4xl px-8 py-3.5 rounded-2xl shadow-none opacity-50 cursor-not-allowed";
+          }
+
+          document.getElementById('sd-step-2').classList.remove('hidden');
+          feedback.innerHTML = `<span class="text-indigo-600">Great! Now choose the right answer!</span>`;
+        } else {
+          sound.playWrong();
+          feedback.innerHTML = `<span class="text-rose-500">Look at the distance 👉</span>`;
+        }
+      }
+
+      checkSDStep2(selectedAnswer, clickedBtnId) {
+        if (this.roundLocked) return;
+        const q = this.questions[this.currentIndex];
+        const correctAns = `It's ${q.item.article} ${q.item.name}.`;
+
+        const container = document.getElementById('sd-answer-buttons');
+        const allButtons = container.querySelectorAll('button');
+
+        if (selectedAnswer === correctAns) {
+          this.roundLocked = true;
+          sound.playCorrect();
+          this.awardStar();
+
+          const visualBox = document.getElementById('target-visual-box');
+          if (visualBox) visualBox.classList.add('animate-glow-zoom');
+
+          allButtons.forEach(btn => {
+            if (btn.id === clickedBtnId) {
+              btn.className = "btn-bounce bg-emerald-500 text-white font-heading text-2xl sm:text-3xl py-3.5 px-6 rounded-2xl shadow-xl border-b-6 border-emerald-700 animate-glow-zoom";
+            } else {
+              btn.className = "btn-bounce bg-slate-200 text-slate-400 font-heading text-2xl sm:text-3xl py-3.5 px-6 rounded-2xl shadow-none opacity-50 cursor-not-allowed";
+            }
+          });
+
+          document.getElementById('feedback-msg').innerText = '';
+          document.getElementById('btn-next').classList.remove('hidden');
+        } else {
+          sound.playWrong();
+          const clickedBtn = document.getElementById(clickedBtnId);
+          if (clickedBtn) {
+            clickedBtn.className = "btn-bounce bg-slate-200 text-slate-400 font-heading text-2xl sm:text-3xl py-3.5 px-6 rounded-2xl shadow-none opacity-50 cursor-not-allowed";
+          }
+          document.getElementById('feedback-msg').innerHTML = `<span class="text-rose-500">Not quite! Check article & name!</span>`;
+        }
+      }
+
+      nextQuestion() {
+        sound.playPop();
+        
+        if (this.isCompleted) {
+          this.goHome();
+          return;
+        }
+
+        this.currentIndex++;
+        if (this.currentIndex < this.questions.length) {
+          this.renderQuestion();
+        } else {
+          this.renderCompletionScreen();
+        }
+      }
+
+      renderCompletionScreen() {
+        this.isCompleted = true;
+        sound.playFanfare();
+        confetti({ particleCount: 180, spread: 120, origin: { y: 0.6 } });
+
+        const stage = document.getElementById('game-stage');
+        document.getElementById('feedback-msg').innerText = '';
+        document.getElementById('question-tracker').innerText = `Completed!`;
+
+        const btnNext = document.getElementById('btn-next');
+        btnNext.classList.remove('hidden');
+        btnNext.innerHTML = `<span>Menu</span> <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3.5" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 00-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 00-1 1m-6 0h6"></path></svg>`;
+
+        let praiseMessage = "You did an amazing job practicing your English stationery words!";
+        if (this.starsEarned === 6) {
+          praiseMessage = "🌟 Perfect Score! You are an absolute English Super Star! 🌟";
+        } else if (this.starsEarned >= 4) {
+          praiseMessage = "⭐ Wonderful Effort! You spoke and learned so well today! ⭐";
+        }
+
+        stage.innerHTML = `
+          <div class="text-center py-6 flex flex-col items-center justify-center h-full w-full">
+            <h3 class="font-heading text-6xl sm:text-8xl text-emerald-600 animate-green-flash mb-3 drop-shadow-md">COMPLETED!</h3>
+            <h4 class="font-heading text-3xl sm:text-5xl text-amber-500 mb-2 drop-shadow-md">🎉 AMAZING WORK, CLASS! 🎉</h4>
+            <p class="text-xl sm:text-2xl font-bold text-indigo-800 mb-4 px-4">${praiseMessage}</p>
+            
+            <div class="inline-block bg-amber-100 px-8 py-4 rounded-3xl border-3 border-amber-300 shadow-inner mb-6">
+              <div class="font-heading text-slate-700 text-xl sm:text-2xl mb-1">Total Stars Collected</div>
+              <div class="font-heading text-4xl sm:text-6xl text-amber-600">${this.starsEarned} / ${this.questions.length} ⭐</div>
+            </div>
+
+            <div>
+              <button onclick="game.goHome()" class="btn-bounce bg-emerald-500 hover:bg-emerald-600 text-white font-heading text-2xl sm:text-3xl px-10 py-4 rounded-3xl shadow-xl border-b-6 border-emerald-700 flex items-center gap-3">
+                <span>Choose Another Activity</span>
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+              </button>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    const game = new Game();
+  </script>
+</body>
+</html>
